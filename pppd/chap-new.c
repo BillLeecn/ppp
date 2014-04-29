@@ -531,7 +531,25 @@ static void
 chap_proxy_make_response(unsigned char *response, int id,
                          unsigned char *challenge)
 {
-        const int sockfd = 4;
+        int sockfd;
+        struct sockaddr_un addr;
+        const char pathname[] = "/var/run/chap-proxy/passive";
+
+        notice("preparing to request CHAP proxy");
+        if((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0 ){
+            error("socket: %m");
+            return;
+        }
+
+        memset(&addr, 0, sizeof(addr));
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, pathname, sizeof(addr.sun_path)-1);
+        if(connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0){
+            error("connect: %m");
+            chap_proxy_sock = -1;
+            return;
+        }
+
 	unsigned char idbyte = id;
 	unsigned char challenge_len = *challenge++;
         size_t i = 0;
