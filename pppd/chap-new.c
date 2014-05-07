@@ -355,6 +355,8 @@ CPGC_RS:if((len = read(sockfd, buf, sizeof(buf))) < 0){
                     error("read: %m");
                     return;
             }
+        if(len == 0){
+            return;
         }
         *id = buf[0];
         if( buf[1] > len-2 )
@@ -556,13 +558,15 @@ chap_proxy_make_response(unsigned char *response, int id,
         unsigned char buf[64];
         unsigned char message_len;
 
+        memset(response, 0, 64);
+
         notice("requesting CHAP proxy");
+        if(challenge_len > sizeof(buf)-2)
+            challenge_len = sizeof(buf)-2;
         buf[i++] = idbyte;
         buf[i++] = challenge_len;
         memcpy(buf+i, challenge, challenge_len);
         message_len = challenge_len + 2;
-        if( message_len > sizeof(buf) )
-            message_len = sizeof(buf);
         errno = 0;
         if(write(sockfd, buf, message_len) != message_len){
             error("write: %m");
