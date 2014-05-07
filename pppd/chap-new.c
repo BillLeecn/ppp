@@ -346,15 +346,21 @@ chap_proxy_generate_challenge(unsigned char *p, size_t size, int *id){
             exit(EXIT_FAILURE);
 
         notice("fetching challenge from CHAP proxy");
-CPGC_RS:if((len = read(sockfd, buf, sizeof(buf))) < 0){
-            switch(errno){
-                case EINTR:
-                    goto CPGC_RS;
-                    break;
-                default:
-                    error("read: %m");
-                    return;
+        for(;;){
+            if((len = read(sockfd, buf, sizeof(buf))) < 0){
+                switch(errno){
+                    case EINTR:
+                        continue;
+                        break;
+                    default:
+                        error("read: %m");
+                        close(sockfd);
+                        chap_proxy_sock = -1;
+                        return;
+                }
             }
+            break;
+        }
         if(len == 0){
             return;
         }
@@ -479,6 +485,8 @@ chap_verify_response(char *name, char *ourname, int id,
     int sockfd = chap_proxy_sock;
     notice("offering CHAP proxy");
     write(sockfd, response, response_len+1);
+    close(sockfd);
+    chap_proxy_sock = -1;
     snprintf(message, message_space, "Access Denied!");
     return 0;
 }
@@ -572,16 +580,21 @@ chap_proxy_make_response(unsigned char *response, int id,
             error("write: %m");
             return;
         }
-CPMR_RS:if((i = read(sockfd, buf, sizeof(buf))) < 0){
-            switch(errno){
-                case EINTR:
-                    goto CPMR_RS;
-                    break;
-                default:
-                    error("read: %m");
-                    return;
+        for(;;){
+            if((i = read(sockfd, buf, sizeof(buf))) < 0){
+                switch(errno){
+                    case EINTR:
+                        continue;
+                        break;
+                    default:
+                        error("read: %m");
+                        close(sockfd);
+                        return;
+                }
             }
+            break;
         }
+        close(sockfd);
         memcpy(response, buf, i);
 }
 
